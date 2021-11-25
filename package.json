@@ -1,0 +1,56 @@
+{
+  "name": "mqemitter-amqplib",
+  "version": "1.0.0",
+  "description": "RabbitMQ-powered MQEmitter on AMQP protocol",
+  "main": "dist/index.js",
+  "scripts": {
+    "prebuild": "rm -rf ./dist",
+    "build": "tsc",
+    "prestart": "yarn run build",
+    "start": "node dist/test/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/iagocalazans/mqemitter-rabbit.git"
+  },
+  "keywords": [
+    "emitter",
+    "events",
+    "message",
+    "queue",
+    "mq",
+    "publish",
+    "subscribe",
+    "pub",
+    "sub",
+    "rabbitmq",
+    "amqplib"
+  ],
+  "author": "Iago Calazans <iago.calazans@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/iagocalazans/mqemitter-rabbit/issues"
+  },
+  "homepage": "https://github.com/iagocalazans/mqemitter-rabbit#readme",
+  "dependencies": {
+    "amqplib": "^0.8.0",
+    "hyperid": "^2.3.1",
+    "mqemitter": "^4.5.0",
+    "node": "^17.1.0"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.8.2",
+    "@types/node": "^16.11.10",
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "@typescript-eslint/parser": "^5.4.0",
+    "eslint": "^8.3.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-standard-with-typescript": "^21.0.1",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^5.1.1",
+    "typescript": "^4.5.2",
+    "typescript-eslint": "^0.0.1-alpha.0"
+  }
+}
