@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 MD024 -->
-
 # MQEmitter RabbitMQ at AMQP protocol
 
 An Opinionated Message Queue with an emitter-style API, but with callbacks.
@@ -187,4 +185,4 @@ Of course, you can mix `#` and `+` in the same subscription.
 
 ## LICENSE
 
-ISC
+[ISC](https://github.com/iagocalazans/mqemitter-rabbit/blob/master/LICENSE)
