@@ -1,9 +1,18 @@
-import { MQEmitterAMQPLib } from '../mqemitter-rabbit';
+import { MQEmitterAMQPLib } from 'mqemitter-rabbit';
 
 const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
 });
 
+/**
+ *
+ * You must call startConnection to connect your RabbitMQ instance.
+ *
+ * @function startConnection
+ * @param {string} url
+ * @param {Array<string>} queues
+ * @param {'listener'|'publisher'|'both'} type
+ */
 mqemitter.startConnection(
   'amqps://your-url-must-come-here', ['entry:message', 'process:message', 'close:message'], 'both'
 );

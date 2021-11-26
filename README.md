@@ -10,13 +10,13 @@ An Opinionated Message Queue with an emitter-style API, but with callbacks.
 
 If you need a multi process MQEmitter, check out the table below:
 
-- [mqemitter-redis]: Redis-powered mqemitter
-- [mqemitter]: Standard MQemitter
-- [mqemitter-mongodb]: Mongodb based mqemitter
-- [mqemitter-child-process]: Share the same mqemitter between a hierarchy of child processes
-- [mqemitter-cs]: Expose a MQEmitter via a simple client/server protocol
-- [mqemitter-p2p]: A P2P implementation of MQEmitter, based on HyperEmitter and a Merkle DAG
-- [mqemitter-aerospike]: Aerospike mqemitter
+- [mqemitter](https://github.com/mcollina/mqemitter): Standard MQemitter
+- [mqemitter-redis](https://github.com/mcollina/mqemitter-redis): Redis-powered mqemitter
+- [mqemitter-mongodb](https://github.com/mcollina/mqemitter-mongodb): Mongodb based mqemitter
+- [mqemitter-child-process](https://github.com/mcollina/mqemitter-child-process): Share the same mqemitter between a hierarchy of child processes
+- [mqemitter-cs](https://github.com/mcollina/mqemitter-cs): Expose a MQEmitter via a simple client/server protocol
+- [mqemitter-p2p](https://github.com/mcollina/mqemitter-p2p): A P2P implementation of MQEmitter, based on HyperEmitter and a Merkle DAG
+- [mqemitter-aerospike](https://github.com/mcollina/mqemitter-aerospike): Aerospike mqemitter
 
 ## Installation
 
@@ -27,14 +27,23 @@ npm install mqemitter-rabbit
 ## Examples
 
 ```ts
-import { MQEmitterAMQPLib } from '../mqemitter-rabbit';
+import { MQEmitterAMQPLib } from 'mqemitter-rabbit';
 
 const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
 });
 
+/**
+ *
+ * You must call startConnection to connect your RabbitMQ instance.
+ *
+ * @function startConnection
+ * @param {string} url
+ * @param {Array<string>} queues
+ * @param {'listener'|'publisher'|'both'} type
+ */
 mqemitter.startConnection(
-  'amqps://your-url-must-come-here', ['entry:message', 'process:message', 'close:message'], 'both'
+  'amqps://your-url-must-come-here', ['entry:message'], 'both'
 );
 
 mqemitter.on(
@@ -47,16 +56,6 @@ mqemitter.on(
   }
 );
 
-mqemitter.on(
-  'conversation:message', (
-    msg, done
-  ) => {
-    console.log(
-      'Conversation received a new message', msg, done
-    );
-  }
-);
-
 setTimeout(
   () => {
     try {
@@ -65,24 +64,11 @@ setTimeout(
           topic: 'conversation:created'
         }, 'entry:message'
       );
-
-      mqemitter.emit(
-        {
-          topic: 'conversation:message'
-        }, 'process:message'
-      );
-
-      mqemitter.emit(
-        {
-          topic: 'conversation:postback'
-        }, 'close:messagea'
-      );
     } catch (err) {
       console.log(err);
     }
   }, 5000
 );
-
 ```
 
 ## new MQEmitter ([options])
