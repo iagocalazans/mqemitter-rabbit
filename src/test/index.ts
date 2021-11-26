@@ -1,4 +1,4 @@
-import { MQEmitterAMQPLib } from 'mqemitter-rabbit';
+import { MQEmitterAMQPLib } from '../mqemitter-rabbit';
 
 const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
@@ -27,16 +27,6 @@ mqemitter.on(
   }
 );
 
-mqemitter.on(
-  'conversation:message', (
-    msg, done
-  ) => {
-    console.log(
-      'Conversation received a new message', msg, done
-    );
-  }
-);
-
 setTimeout(
   () => {
     try {
@@ -44,18 +34,6 @@ setTimeout(
         {
           topic: 'conversation:created'
         }, 'entry:message'
-      );
-
-      mqemitter.emit(
-        {
-          topic: 'conversation:message'
-        }, 'process:message'
-      );
-
-      mqemitter.emit(
-        {
-          topic: 'conversation:postback'
-        }, 'close:messagea'
       );
     } catch (err) {
       console.log(err);
