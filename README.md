@@ -25,7 +25,7 @@ npm install mqemitter-rabbit
 ## Examples
 
 ```ts
-import { MQEmitterAMQPLib } from 'mqemitter-rabbit';
+import { MessageFactory, MQEmitterAMQPLib } from 'mqemitter-rabbit';
 
 const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
@@ -41,35 +41,49 @@ const mqemitter = new MQEmitterAMQPLib({
  * @param {'listener'|'publisher'|'both'} type
  */
 mqemitter.startConnection(
-  'amqps://your-url-must-come-here', ['entry:message'], 'both'
+  'amqps://username:password@host/db', ['entry:message'], 'listener'
 );
 
 mqemitter.on(
-  'conversation:created', (
-    msg, done
+  // Listen to a topic and receive it messages.
+  'conversation:created',
+  (
+    message, done
   ) => {
     console.log(
-      'Creating new conversation', msg, done
+      'Creating new conversation', message
     );
+    done();
   }
 );
 
 setTimeout(
   () => {
     try {
+      // Use the MessageFactory class to create classes within a pattern.
+      const message = new MessageFactory().generate(
+        'conversation:created', // Topic: Required.
+        { // Content: aditional content can be attached to the Message.
+          user: {
+            name: 'Iago Calazans',
+            age: 29
+          }
+        }
+      );
+
+      // Then emit this message.
       mqemitter.emit(
-        {
-          topic: 'conversation:created'
-        }, 'entry:message'
+        message, 'entry:message'
       );
     } catch (err) {
       console.log(err);
     }
   }, 5000
 );
+
 ```
 
-## new MQEmitter ([options])
+## new MQEmitterAMQPLib ([options])
 
 - options `<object>`
   - `concurrency` `<number>` maximum number of concurrent messages that can be on concurrent delivery. __Default__: `0`
@@ -133,8 +147,14 @@ emitter.on('hello/+', function(message, cb) {
   cb()
 })
 
-emitter.emit({ topic: 'hello/my/world', something: 'more' })
-emitter.emit({ topic: 'hello//world', something: 'more' })
+const messageComplete = new MessageFactory().generate(
+        'hello/my/world', { something: 'more' }
+      );
+      const messageIncomplete = new MessageFactory().generate(
+        'hello//world', { something: 'more' }
+      );
+emitter.emit(messageComplete)
+emitter.emit(messageIncomplete)
 ```
 
 The wildcard character `+` matches one word:
@@ -153,8 +173,14 @@ emitter.on('hello/+', function(message, cb) {
   cb()
 })
 
-emitter.emit({ topic: 'hello/my/world', something: 'more' })
-emitter.emit({ topic: 'hello//world', something: 'more' })
+const messageComplete = new MessageFactory().generate(
+        'hello/my/world', { something: 'more' }
+      );
+      const messageIncomplete = new MessageFactory().generate(
+        'hello//world', { something: 'more' }
+      );
+emitter.emit(messageComplete)
+emitter.emit(messageIncomplete)
 ```
 
 The wildcard character `#` matches zero or more words:
@@ -178,7 +204,10 @@ emitter.on('hello/my/world/#', function(message, cb) {
   cb()
 })
 
-emitter.emit({ topic: 'hello/my/world', something: 'more' })
+const message = new MessageFactory().generate(
+        'hello/my/world', { something: 'more' }
+      );
+emitter.emit(message)
 ```
 
 Of course, you can mix `#` and `+` in the same subscription.
