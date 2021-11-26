@@ -1,14 +1,13 @@
 {
-  "name": "mqemitter-amqplib",
+  "name": "mqemitter-rabbit",
   "version": "1.0.0",
   "description": "RabbitMQ-powered MQEmitter on AMQP protocol",
-  "main": "dist/index.js",
+  "main": "dist/mqemitter-rabbit.js",
   "scripts": {
     "prebuild": "rm -rf ./dist",
     "build": "tsc",
     "prestart": "yarn run build",
-    "start": "node dist/test/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/test/index.js"
   },
   "repository": {
     "type": "git",
