@@ -28,7 +28,7 @@
     "amqplib"
   ],
   "author": "Iago Calazans <iago.calazans@gmail.com>",
-  "license": "MIT",
+  "license": "ISC",
   "bugs": {
     "url": "https://github.com/iagocalazans/mqemitter-rabbit/issues"
   },
