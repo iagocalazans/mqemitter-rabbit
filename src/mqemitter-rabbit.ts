@@ -3,7 +3,7 @@
 import MQEmitter, { Message, MQEmitter as IMQEmitter } from 'mqemitter';
 import AMQPLib from 'amqplib/callback_api';
 import { EventEmitter } from 'events';
-// import hyperid from 'hyperid';
+import hyperid from 'hyperid';
 
 export interface MQEmitterOptions {
   concurrency?: number
@@ -13,14 +13,20 @@ export interface MQEmitterOptions {
   wildcardSome?: string
 }
 
+interface Packet {
+  id: hyperid.Instance
+  body: Message
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function noop (): void {}
 
-export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurrent'> {
+export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurrent' | 'emit'> {
   public amqp: typeof AMQPLib;
   protected state = new EventEmitter();
   private connection: AMQPLib.Connection | undefined;
   private channel?: AMQPLib.Channel;
+  private queues?: string[];
   private readonly consumers: any[] = [];
   private readonly mqe: IMQEmitter;
 
@@ -30,7 +36,7 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
   }
 
   startConnection (
-    url: string, queues: string[]
+    url: string, queues: string[], method: 'listener' | 'publisher' | 'both' = 'listener'
   ): AMQPLib.Connection | undefined {
     if (this.connection === undefined) {
       this.amqp.connect(
@@ -54,13 +60,16 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
             }
 
             console.log('successfully created amqp channel');
-
             this.channel = channel;
-            const iterator = queues?.values();
+            this.queues = queues;
 
-            this.consumeQueues(
-              iterator, iterator.next()
-            );
+            if (method === 'listener' || method === 'both') {
+              const iterator = queues?.values();
+
+              this.consumeQueues(
+                iterator, iterator.next()
+              );
+            }
           });
         }
       );
@@ -80,39 +89,38 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     this.mqe.on(
       topic, listener, callback
     );
+
     return this;
-  }
-
-  private _emit (
-    message: Message,
-    callback?: (
-      error?: Error
-    ) => void
-  ): void {
-    // TODO: Must have different emition for on-emit and emit-on.
-
-    // const packet = {
-    //   id: hyperid(),
-    //   msg: message
-    // };
-
-    this.mqe.emit(message);
   }
 
   emit (
     message: Message,
+    queue: string,
+    headers?: Record<string, unknown>,
     callback?: (
       error?: Error
     ) => void
   ): void {
-    // TODO: Must have different emition for on-emit and emit-on.
+    if (this.queues?.find((el) => el === queue) === undefined) {
+      throw new Error('this queue isnt loaded on this application, aborting');
+    }
 
-    // const packet = {
-    //   id: hyperid(),
-    //   msg: message
-    // };
+    const packet: Packet = {
+      id: hyperid(),
+      body: message
+    };
 
-    this.mqe.emit(message);
+    const buffer = Buffer.from(JSON.stringify(packet));
+
+    const sendStatus = this.channel?.sendToQueue(
+      queue, buffer, {
+        headers
+      }
+    );
+
+    console.log(
+      'packet sent to rabbitmq at amqp protocol: %s', sendStatus
+    );
   }
 
   removeListener (
@@ -132,6 +140,15 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     this.mqe.close(callback);
   }
 
+  private _emit (
+    message: Message,
+    callback?: (
+      error?: Error
+    ) => void
+  ): void {
+    this.mqe.emit(message);
+  }
+
   private consumeQueues (
     values: IterableIterator<string>, actual: IteratorResult<string, any>
   ): void {
@@ -148,8 +165,8 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
             );
             if (message !== null) {
               if (message.content !== undefined) {
-                const parsed: Message = JSON.parse(message.content.toString());
-                this._emit(parsed);
+                const packet: Packet = JSON.parse(message.content.toString());
+                this._emit(packet.body);
               }
 
               this.channel?.ack(message);
