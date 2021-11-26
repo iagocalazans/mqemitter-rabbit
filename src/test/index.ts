@@ -1,3 +1,4 @@
+import { MessageFactory } from '../factory/factory.class';
 import { MQEmitterAMQPLib } from '../mqemitter-rabbit';
 
 const mqemitter = new MQEmitterAMQPLib({
@@ -14,26 +15,35 @@ const mqemitter = new MQEmitterAMQPLib({
  * @param {'listener'|'publisher'|'both'} type
  */
 mqemitter.startConnection(
-  'amqps://your-url-must-come-here', ['entry:message', 'process:message', 'close:message'], 'both'
+  'amqps://username:password@host/db', ['entry:message', 'process:message', 'close:message'], 'both'
 );
 
 mqemitter.on(
   'conversation:created', (
-    msg, done
+    message, done
   ) => {
     console.log(
-      'Creating new conversation', msg, done
+      'Creating new conversation', message
     );
+    done();
   }
 );
 
 setTimeout(
   () => {
     try {
+      const message = new MessageFactory().generate(
+        'conversation:created', // Topic: Required.
+        { // Content: aditional content can be attached to the Message.
+          user: {
+            name: 'Iago Calazans',
+            age: 29
+          }
+        }
+      );
+
       mqemitter.emit(
-        {
-          topic: 'conversation:created'
-        }, 'entry:message'
+        message, 'entry:message'
       );
     } catch (err) {
       console.log(err);
