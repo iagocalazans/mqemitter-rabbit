@@ -3,6 +3,7 @@ import { MQEmitterAMQPLib } from '../mqemitter-rabbit';
 const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
 });
+
 mqemitter.startConnection(
   'amqps://your-url-must-come-here', ['entry:message', 'process:message', 'close:message'], 'both'
 );
