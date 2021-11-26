@@ -4,7 +4,7 @@ const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
 });
 mqemitter.startConnection(
-  'amqps://stzzvlat:HdMY4CshCcwX0P2xsngXUU4Z1xTLYJfx@fish.rmq.cloudamqp.com/stzzvlat', ['entry:message', 'process:message', 'close:message']
+  'amqps://your-url-must-come-here', ['entry:message', 'process:message', 'close:message'], 'both'
 );
 
 mqemitter.on(
@@ -27,14 +27,28 @@ mqemitter.on(
   }
 );
 
-mqemitter.emit({
-  topic: 'conversation:created'
-});
+setTimeout(
+  () => {
+    try {
+      mqemitter.emit(
+        {
+          topic: 'conversation:created'
+        }, 'entry:message'
+      );
 
-mqemitter.emit({
-  topic: 'conversation:message'
-});
+      mqemitter.emit(
+        {
+          topic: 'conversation:message'
+        }, 'process:message'
+      );
 
-mqemitter.emit({
-  topic: 'conversation:postback'
-});
+      mqemitter.emit(
+        {
+          topic: 'conversation:postback'
+        }, 'close:messagea'
+      );
+    } catch (err) {
+      console.log(err);
+    }
+  }, 5000
+);
