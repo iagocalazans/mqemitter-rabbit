@@ -5,17 +5,10 @@ const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
 });
 
-/**
- *
- * You must call startConnection to connect your RabbitMQ instance.
- *
- * @function startConnection
- * @param {string} url
- * @param {Array<string>} queues
- * @param {'listener'|'publisher'|'both'} type
- */
 mqemitter.startConnection(
-  'amqps://username:password@host/db', ['entry:message', 'process:message', 'close:message'], 'both'
+  'amqps://stzzvlat:HdMY4CshCcwX0P2xsngXUU4Z1xTLYJfx@fish.rmq.cloudamqp.com/stzzvlat', // URL of your AMQP instance
+  ['entry:message', 'process:message', 'close:message'], // The queues to attach to
+  'listener' // Your connection method, must be one of: listener, publisher or both
 );
 
 mqemitter.on(
@@ -25,14 +18,18 @@ mqemitter.on(
     console.log(
       'Creating new conversation', message
     );
-    done();
+    return done();
   }
+);
+
+mqemitter.events.on(
+  'error', (err) => console.log(err)
 );
 
 setTimeout(
   () => {
     try {
-      const message = new MessageFactory().generate(
+      const iago = new MessageFactory().generate(
         'conversation:created', // Topic: Required.
         { // Content: aditional content can be attached to the Message.
           user: {
@@ -42,8 +39,22 @@ setTimeout(
         }
       );
 
+      const nath = new MessageFactory().generate(
+        'conversation:created', // Topic: Required.
+        { // Content: aditional content can be attached to the Message.
+          user: {
+            name: 'Nath Endlich',
+            age: 26
+          }
+        }
+      );
+
       mqemitter.emit(
-        message, 'entry:message'
+        iago, 'entry:message'
+      );
+
+      mqemitter.emit(
+        nath, 'entry:message'
       );
     } catch (err) {
       console.log(err);

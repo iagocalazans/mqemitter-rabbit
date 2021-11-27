@@ -1,5 +1,5 @@
 import { Message } from 'mqemitter';
-import { PublishMessage } from './pubmessage.class';
+import { PublishMessage } from './publish-message.class';
 
 /* eslint-disable require-jsdoc */
 abstract class Factory {
