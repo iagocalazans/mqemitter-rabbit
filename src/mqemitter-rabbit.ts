@@ -18,17 +18,15 @@ interface Packet {
   body: Message
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function noop (): void {}
-
 export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurrent' | 'emit'> {
   public amqp: typeof AMQPLib;
-  protected state = new EventEmitter();
+  public events = new EventEmitter();
   private connection: AMQPLib.Connection | undefined;
   private channel?: AMQPLib.Channel;
   private queues?: string[];
   private readonly consumers: any[] = [];
   private readonly mqe: IMQEmitter;
+  private method?: 'listener' | 'publisher' | 'both';
 
   constructor (private readonly opts?: MQEmitterOptions) {
     this.mqe = MQEmitter(opts);
@@ -38,6 +36,8 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
   startConnection (
     url: string, queues: string[], method: 'listener' | 'publisher' | 'both' = 'listener'
   ): AMQPLib.Connection | undefined {
+    this.method = method;
+
     if (this.connection === undefined) {
       this.amqp.connect(
         url, (
@@ -86,6 +86,10 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     ) => void,
     callback?: () => void
   ): any {
+    if (this.method === 'publisher') {
+      this.onError(new Error('you can\'t listen to messages, your connection method is publisher switch between both or listener'));
+    }
+
     this.mqe.on(
       topic, listener, callback
     );
@@ -101,8 +105,14 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
       error?: Error
     ) => void
   ): void {
+    const cb = (callback !== undefined) ? callback : this.onError;
+
+    if (this.method === 'listener') {
+      return cb(new Error('you can\'t emit messages, your connection method is listener switch between both or publisher'));
+    }
+
     if (this.queues?.find((el) => el === queue) === undefined) {
-      throw new Error('this queue isnt loaded on this application, aborting');
+      return cb(new Error('this queue isnt loaded on this application, aborting'));
     }
 
     const packet: Packet = {
@@ -112,14 +122,10 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
 
     const buffer = Buffer.from(JSON.stringify(packet));
 
-    const sendStatus = this.channel?.sendToQueue(
+    this.channel?.sendToQueue(
       queue, buffer, {
         headers
       }
-    );
-
-    console.log(
-      'packet sent to rabbitmq at amqp protocol: %s', sendStatus
     );
   }
 
@@ -134,10 +140,17 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     this.mqe.removeListener(
       topic, listener, callback
     );
+
+    this.consumers.splice(
+      0, -1
+    );
   }
 
   close (callback: () => void): void {
     this.mqe.close(callback);
+
+    this.connection?.close();
+    console.log('successfully closes amqp connection');
   }
 
   private _emit (
@@ -146,7 +159,9 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
       error?: Error
     ) => void
   ): void {
-    this.mqe.emit(message);
+    this.mqe.emit(
+      message, callback
+    );
   }
 
   private consumeQueues (
@@ -180,11 +195,9 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     }
   }
 
-  private onError (err: Error | undefined): void {
-    if ((err !== undefined)) {
-      this.state.emit(
-        'error', err
-      );
-    }
-  }
+  private readonly onError = (err: Error): void => {
+    this.events.emit(
+      'error', err
+    );
+  };
 }
