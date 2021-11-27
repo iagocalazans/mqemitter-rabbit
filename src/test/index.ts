@@ -6,9 +6,13 @@ const mqemitter = new MQEmitterAMQPLib({
 });
 
 mqemitter.startConnection(
-  'amqps://stzzvlat:HdMY4CshCcwX0P2xsngXUU4Z1xTLYJfx@fish.rmq.cloudamqp.com/stzzvlat', // URL of your AMQP instance
+  'amqps://username:password@domain/db', // URL of your AMQP instance
   ['entry:message', 'process:message', 'close:message'], // The queues to attach to
-  'listener' // Your connection method, must be one of: listener, publisher or both
+  'listener' // Your connection method, must be one of: listener, publisher or both.
+);
+
+mqemitter.events.on( // You can retrieve the errors on MQEmitter events.
+  'error', (err) => console.log(err)
 );
 
 mqemitter.on(
@@ -22,14 +26,10 @@ mqemitter.on(
   }
 );
 
-mqemitter.events.on(
-  'error', (err) => console.log(err)
-);
-
 setTimeout(
   () => {
     try {
-      const iago = new MessageFactory().generate(
+      const message = new MessageFactory().generate(
         'conversation:created', // Topic: Required.
         { // Content: aditional content can be attached to the Message.
           user: {
@@ -39,22 +39,11 @@ setTimeout(
         }
       );
 
-      const nath = new MessageFactory().generate(
-        'conversation:created', // Topic: Required.
-        { // Content: aditional content can be attached to the Message.
-          user: {
-            name: 'Nath Endlich',
-            age: 26
-          }
+      mqemitter.emit(
+        message, 'entry:message', undefined,
+        (err) => {
+          console.log(err); // You can retrieve the errors while trying to attach.
         }
-      );
-
-      mqemitter.emit(
-        iago, 'entry:message'
-      );
-
-      mqemitter.emit(
-        nath, 'entry:message'
       );
     } catch (err) {
       console.log(err);

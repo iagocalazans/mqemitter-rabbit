@@ -31,36 +31,30 @@ const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
 });
 
-/**
- *
- * You must call startConnection to connect your RabbitMQ instance.
- *
- * @function startConnection
- * @param {string} url
- * @param {Array<string>} queues
- * @param {'listener'|'publisher'|'both'} type
- */
 mqemitter.startConnection(
-  'amqps://username:password@host/db', ['entry:message'], 'listener'
+  'amqps://username:password@domain/db', // URL of your AMQP instance
+  ['entry:message', 'process:message'], // The queues to attach to
+  'listener' // Your connection method, must be one of: listener, publisher or both.
+);
+
+mqemitter.events.on( // You can retrieve the errors on MQEmitter events.
+  'error', (err) => console.log(err)
 );
 
 mqemitter.on(
-  // Listen to a topic and receive it messages.
-  'conversation:created',
-  (
+  'conversation:created', (
     message, done
   ) => {
     console.log(
       'Creating new conversation', message
     );
-    done();
+    return done();
   }
 );
 
 setTimeout(
   () => {
     try {
-      // Use the MessageFactory class to create classes within a pattern.
       const message = new MessageFactory().generate(
         'conversation:created', // Topic: Required.
         { // Content: aditional content can be attached to the Message.
@@ -71,9 +65,11 @@ setTimeout(
         }
       );
 
-      // Then emit this message.
       mqemitter.emit(
-        message, 'entry:message'
+        message, 'entry:message', undefined, 
+        (err) => {
+          console.log(err) // You can retrieve the errors while trying to attach.
+        }
       );
     } catch (err) {
       console.log(err);
