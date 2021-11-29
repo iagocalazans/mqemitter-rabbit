@@ -5,6 +5,18 @@ import AMQPLib from 'amqplib/callback_api';
 import { EventEmitter } from 'events';
 import hyperid from 'hyperid';
 
+export enum ApplicationType {
+  LISTENER = 'listener',
+  PUBLISHER = 'publisher',
+  BOTH = 'both'
+}
+
+export interface IStartOptions {
+  url: string
+  queues: string[]
+  method: ApplicationType
+}
+
 export interface MQEmitterOptions {
   concurrency?: number
   matchEmptyLevels?: boolean
@@ -18,37 +30,43 @@ interface Packet {
   body: Message
 }
 
+export { MessageFactory } from './factory/factory.class';
+
 export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurrent' | 'emit'> {
   public amqp: typeof AMQPLib;
   public events = new EventEmitter();
-  private connection: AMQPLib.Connection | undefined;
+  private connection?: AMQPLib.Connection;
   private channel?: AMQPLib.Channel;
   private queues?: string[];
+  private method?: ApplicationType;
   private readonly consumers: any[] = [];
-  private readonly mqe: IMQEmitter;
-  private method?: 'listener' | 'publisher' | 'both';
+  private readonly mqemitter: IMQEmitter;
 
   constructor (private readonly opts?: MQEmitterOptions) {
-    this.mqe = MQEmitter(opts);
+    this.mqemitter = MQEmitter(opts);
     this.amqp = AMQPLib;
   }
 
   startConnection (
-    url: string, queues: string[], method: 'listener' | 'publisher' | 'both' = 'listener'
-  ): AMQPLib.Connection | undefined {
-    this.method = method;
+    config: IStartOptions,
+    callback: (
+      err?: Error,
+      next?: MQEmitterAMQPLib
+    ) => void
+  ): void {
+    this.method = config.method;
 
     if (this.connection === undefined) {
       this.amqp.connect(
-        url, (
+        config.url, (
           err, connection
         ) => {
           if (err !== null) {
             console.log(err);
-            return err;
+            return callback(err);
           }
 
-          console.log('successfully connected to amqp');
+          console.log('[ * ] Successfully connected to RabbitMQ.');
           this.connection = connection;
 
           this.connection.createChannel((
@@ -56,26 +74,28 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
           ) => {
             if (err !== null) {
               console.log(err);
-              return err;
+              return callback(err);
             }
 
-            console.log('successfully created amqp channel');
+            console.log('[ * ] Successfully created AMQP channel.');
             this.channel = channel;
-            this.queues = queues;
+            this.queues = config.queues;
 
-            if (method === 'listener' || method === 'both') {
-              const iterator = queues?.values();
+            if (config.method === 'listener' || config.method === 'both') {
+              const iterator = config.queues?.values();
 
               this.consumeQueues(
                 iterator, iterator.next()
               );
             }
+
+            return callback(
+              undefined, this
+            );
           });
         }
       );
     }
-
-    return this.connection;
   }
 
   on (
@@ -87,10 +107,10 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     callback?: () => void
   ): any {
     if (this.method === 'publisher') {
-      this.onError(new Error('you can\'t listen to messages, your connection method is publisher switch between both or listener'));
+      this.onError(new Error('[ ! ] You can\'t listen to messages, your connection method is publisher switch between both or listener'));
     }
 
-    this.mqe.on(
+    this.mqemitter.on(
       topic, listener, callback
     );
 
@@ -108,7 +128,7 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     const cb = (callback !== undefined) ? callback : this.onError;
 
     if (this.method === 'listener') {
-      return cb(new Error('you can\'t emit messages, your connection method is listener switch between both or publisher'));
+      return cb(new Error('[ ! ] You can\'t emit messages, your connection method is listener switch between both or publisher'));
     }
 
     if (this.queues?.find((el) => el === queue) === undefined) {
@@ -137,7 +157,7 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     ) => void,
     callback?: () => void
   ): void {
-    this.mqe.removeListener(
+    this.mqemitter.removeListener(
       topic, listener, callback
     );
 
@@ -147,7 +167,7 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
   }
 
   close (callback: () => void): void {
-    this.mqe.close(callback);
+    this.mqemitter.close(callback);
 
     this.connection?.close();
     console.log('successfully closes amqp connection');
@@ -159,7 +179,7 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
       error?: Error
     ) => void
   ): void {
-    this.mqe.emit(
+    this.mqemitter.emit(
       message, callback
     );
   }
@@ -169,14 +189,14 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
   ): void {
     if (actual.done !== true) {
       console.log(
-        'consuming at queue %s on amqp', actual.value
+        '[ * ] Consuming AMQP queue %s', actual.value
       );
       this.consumers.push({
         queue: actual.value,
         listener: this.channel?.consume(
           actual.value, (message: AMQPLib.Message | null) => {
             console.log(
-              'message received at queue %s', actual.value
+              'New message received on Queue: %s', actual.value
             );
             if (message !== null) {
               if (message.content !== undefined) {

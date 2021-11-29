@@ -1,29 +1,38 @@
 import { MessageFactory } from '../factory/factory.class';
-import { MQEmitterAMQPLib } from '../mqemitter-rabbit';
+import { ApplicationType, MQEmitterAMQPLib } from '../mqemitter-rabbit';
 
 const mqemitter = new MQEmitterAMQPLib({
   separator: ':'
 });
 
 mqemitter.startConnection(
-  'amqps://username:password@domain/db', // URL of your AMQP instance
-  ['entry:message', 'process:message', 'close:message'], // The queues to attach to
-  'listener' // Your connection method, must be one of: listener, publisher or both.
+  {
+    url: 'amqps://username:password@hostname/db', // URL of your AMQP instance
+    queues: ['entry:message', 'process:message', 'close:message'], // The queues to attach to
+    method: ApplicationType.BOTH
+  }, // Your connection method, must be one of: listener, publisher or both.
+  (
+    err, cb
+  ) => {
+    if (err !== undefined) {
+      return err;
+    }
+
+    cb?.on(
+      'conversation:created', (
+        message, done
+      ) => {
+        console.log(
+          'Creating new conversation', message
+        );
+        return done();
+      }
+    );
+  }
 );
 
 mqemitter.events.on( // You can retrieve the errors on MQEmitter events.
   'error', (err) => console.log(err)
-);
-
-mqemitter.on(
-  'conversation:created', (
-    message, done
-  ) => {
-    console.log(
-      'Creating new conversation', message
-    );
-    return done();
-  }
 );
 
 setTimeout(
