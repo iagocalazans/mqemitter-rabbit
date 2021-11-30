@@ -65,15 +65,15 @@ mqemitter.startConnection(
     );
 
     cb?.emit(
-      message, 'entry:message', undefined,
-      (err) => {
+      message, // The message itself
+      'entry:message', // Queue to publish/emit message
+      undefined, // Some headers to attach to Message
+      (err) => { // Err callback
         console.log(err); // You can retrieve the errors while trying to attach.
       }
     );
   }
 );
-
-
 ```
 
 ## new MQEmitterAMQPLib ([options])
