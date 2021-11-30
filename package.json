@@ -1,6 +1,6 @@
 {
   "name": "mqemitter-rabbit",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "RabbitMQ-powered MQEmitter on AMQP protocol",
   "main": "dist/mqemitter-rabbit.js",
   "scripts": {
