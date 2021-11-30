@@ -212,8 +212,6 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
         this.packets.indexOf(packet), 1
       );
 
-      console.log(this.packets);
-
       return this.channel?.ack(packet?.message);
     }
   }
