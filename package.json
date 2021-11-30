@@ -24,7 +24,8 @@
     "pub",
     "sub",
     "rabbitmq",
-    "amqplib"
+    "amqplib",
+    "broker"
   ],
   "author": "Iago Calazans <iago.calazans@gmail.com>",
   "license": "ISC",
@@ -35,8 +36,7 @@
   "dependencies": {
     "amqplib": "^0.8.0",
     "hyperid": "^2.3.1",
-    "mqemitter": "^4.5.0",
-    "node": "^17.1.0"
+    "mqemitter": "^4.5.0"
   },
   "devDependencies": {
     "@types/amqplib": "^0.8.2",
