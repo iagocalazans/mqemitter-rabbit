@@ -30,6 +30,10 @@ interface Packet {
   body: Message
 }
 
+interface PacketMessage extends Packet {
+  message: AMQPLib.Message
+}
+
 export { MessageFactory } from './factory/factory.class';
 
 export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurrent' | 'emit'> {
@@ -41,6 +45,7 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
   private method?: ApplicationType;
   private readonly consumers: any[] = [];
   private readonly mqemitter: IMQEmitter;
+  private readonly packets: PacketMessage[] = [];
 
   constructor (private readonly opts?: MQEmitterOptions) {
     this.mqemitter = MQEmitter(opts);
@@ -98,11 +103,19 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     }
   }
 
+  /**
+   * When using this function you must work inside listener to control the message acknowledge. This module exports three functions, retry, discard, release to manage the queue process with the related message.
+   *
+   * @param {string} topic
+   * @param {Function} listener
+   * @param {Function} callback
+   * @return {any}
+   */
   on (
     topic: string,
     listener: (
       message: Message,
-      done: () => void
+      done: () => void,
     ) => void,
     callback?: () => void
   ): any {
@@ -166,6 +179,45 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     );
   }
 
+  retry (message: Message): void {
+    const packet = this.packets.find((packet) => packet.body === message);
+    if (packet !== undefined) {
+      this.packets.splice(
+        this.packets.indexOf(packet), 1
+      );
+
+      return this.channel?.nack(
+        packet?.message, false, true
+      );
+    }
+  }
+
+  discard (message: Message): void {
+    const packet = this.packets.find((packet) => packet.body === message);
+    if (packet !== undefined) {
+      this.packets.splice(
+        this.packets.indexOf(packet), 1
+      );
+
+      return this.channel?.nack(
+        packet?.message, false, false
+      );
+    }
+  }
+
+  release (message: Message): void {
+    const packet = this.packets.find((packet) => packet.body === message);
+    if (packet !== undefined) {
+      this.packets.splice(
+        this.packets.indexOf(packet), 1
+      );
+
+      console.log(this.packets);
+
+      return this.channel?.ack(packet?.message);
+    }
+  }
+
   close (callback: () => void): void {
     this.mqemitter.close(callback);
 
@@ -201,11 +253,23 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
             if (message !== null) {
               if (message.content !== undefined) {
                 const packet: Packet = JSON.parse(message.content.toString());
-                this._emit(packet.body);
+                const _toStore: PacketMessage = {
+                  message,
+                  ...packet
+                };
+                this.packets.push(_toStore);
+                this._emit(
+                  packet.body, (err) => {
+                    if (err != null) {
+                      console.log(err);
+                      return this.discard(packet.body);
+                    }
+                  }
+                );
               }
-
-              this.channel?.ack(message);
             }
+          }, {
+            noAck: false
           }
         )
       });

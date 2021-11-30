@@ -50,6 +50,8 @@ mqemitter.startConnection(
         console.log(
           'Creating new conversation', message
         );
+
+        cb.release(message)
         return done();
       }
     );
