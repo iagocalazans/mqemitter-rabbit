@@ -100,6 +100,27 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
           });
         }
       );
+
+      if (this.method === 'listener') {
+        this.mqemitter.on(
+          'discard', (
+            message, done
+          ) => {
+            const packet =
+            this.packets.find((packet) => packet.body === message);
+
+            if (packet !== undefined) {
+              this.packets.splice(
+                this.packets.indexOf(packet), 1
+              );
+
+              this.channel?.ack(packet?.message);
+            }
+
+            return done();
+          }
+        );
+      }
     }
   }
 
@@ -119,6 +140,10 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     ) => void,
     callback?: () => void
   ): any {
+    if (topic === 'discard') {
+      this.onError(new Error('[ ! ] You can\'t listen to discard topic as it is an internal topic.'));
+    }
+
     if (this.method === 'publisher') {
       this.onError(new Error('[ ! ] You can\'t listen to messages, your connection method is publisher switch between both or listener'));
     }
@@ -149,7 +174,9 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
     }
 
     const packet: Packet = {
-      id: hyperid(),
+      id: hyperid({
+        fixedLength: true
+      }),
       body: message
     };
 
@@ -246,7 +273,7 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
         listener: this.channel?.consume(
           actual.value, (message: AMQPLib.Message | null) => {
             console.log(
-              'New message received on Queue: %s', actual.value
+              '[ NEW ] Message received at queue: %s', actual.value
             );
             if (message !== null) {
               if (message.content !== undefined) {
@@ -255,10 +282,44 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
                   message,
                   ...packet
                 };
+
+                if (packet.body === undefined) {
+                  // @ts-expect-error
+                  delete packet.topic;
+                  // @ts-expect-error
+                  delete packet.id;
+
+                  const fakePacket: Packet = {
+                    id: hyperid({
+                      fixedLength: true
+                    }),
+                    body: {
+                      topic: 'discard',
+                      ...packet
+                    }
+                  };
+
+                  message.content = Buffer.from(JSON.stringify(fakePacket));
+
+                  const _toStore: PacketMessage = {
+                    message,
+                    ...fakePacket
+                  };
+
+                  this.packets.push(_toStore);
+                  return this._emit(
+                    fakePacket.body, (err) => {
+                      console.error(`[ ERROR ] The received message was ${ err?.message ?? 'invalid' } and has been skipped.`);
+
+                      return this.discard(fakePacket.body);
+                    }
+                  );
+                }
+
                 this.packets.push(_toStore);
                 this._emit(
                   packet.body, (err) => {
-                    if (err != null) {
+                    if (err !== null) {
                       console.log(err);
                       return this.discard(packet.body);
                     }
@@ -278,6 +339,10 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
   }
 
   private readonly onError = (err: Error): void => {
+    if (this.events.listenerCount('error') === 0) {
+      throw err;
+    }
+
     this.events.emit(
       'error', err
     );
