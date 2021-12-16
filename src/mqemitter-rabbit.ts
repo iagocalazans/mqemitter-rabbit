@@ -319,10 +319,8 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
                 this.packets.push(_toStore);
                 this._emit(
                   packet.body, (err) => {
-                    if (err !== null) {
-                      console.log(err);
-                      return this.discard(packet.body);
-                    }
+                    console.error(`[ ERROR ] The received message was ${ err?.message ?? 'invalid' } and has been skipped.`);
+                    return this.discard(packet.body);
                   }
                 );
               }
