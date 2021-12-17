@@ -309,9 +309,11 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
                   this.packets.push(_toStore);
                   return this._emit(
                     fakePacket.body, (err) => {
-                      console.error(`[ ERROR ] The received message was ${ err?.message ?? 'invalid' } and has been skipped.`);
+                      if (err !== undefined) {
+                        console.error(`[ ERROR ] The received message was ${ err?.message ?? 'invalid' } and has been skipped.`);
 
-                      return this.discard(fakePacket.body);
+                        return this.discard(fakePacket.body);
+                      }
                     }
                   );
                 }
@@ -319,8 +321,10 @@ export class MQEmitterAMQPLib implements Omit<IMQEmitter, 'current' | 'concurren
                 this.packets.push(_toStore);
                 this._emit(
                   packet.body, (err) => {
-                    console.error(`[ ERROR ] The received message was ${ err?.message ?? 'invalid' } and has been skipped.`);
-                    return this.discard(packet.body);
+                    if (err !== undefined) {
+                      console.error(`[ ERROR ] The received message was ${ err?.message ?? 'invalid' } and has been skipped.`);
+                      return this.discard(packet.body);
+                    }
                   }
                 );
               }
